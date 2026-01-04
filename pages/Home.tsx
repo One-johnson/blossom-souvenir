@@ -294,7 +294,7 @@ export const Home: React.FC<{ user: any }> = ({ user }) => {
                     )}
                   </div>
                 ) : (
-                  <div className="space-y-12">
+                  <div className="space-y-12 pb-12">
                     <div className="text-center space-y-4">
                       <h2 className="text-4xl font-black text-slate-900">Your Perfect Matches</h2>
                       <p className="text-slate-500 font-medium">Handpicked treasures based on your special occasion.</p>
@@ -340,13 +340,17 @@ export const Home: React.FC<{ user: any }> = ({ user }) => {
                       ))}
                     </div>
 
-                    <div className="text-center pt-8">
+                    <div className="text-center pt-12 mt-12 border-t border-rose-50">
                       <button 
                         onClick={() => setAiResult(null)}
-                        className="text-slate-400 font-black text-xs uppercase tracking-widest hover:text-rose-500 flex items-center gap-2 mx-auto"
+                        className="inline-flex items-center gap-3 bg-rose-500 text-white px-12 py-5 rounded-[2rem] font-black text-xs uppercase tracking-[0.2em] hover:bg-rose-600 transition-all shadow-xl shadow-rose-200 active:scale-95 group"
                       >
-                        <RotateCcw size={14} /> Start New Search
+                        <RotateCcw size={18} className="group-hover:-rotate-45 transition-transform" />
+                        <span>Start New Search</span>
                       </button>
+                      <p className="mt-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                        Refine your criteria for better results
+                      </p>
                     </div>
                   </div>
                 )}

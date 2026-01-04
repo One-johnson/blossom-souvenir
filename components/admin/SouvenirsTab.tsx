@@ -7,6 +7,7 @@ import {
   Hash, DollarSign, Layers, Info
 } from 'lucide-react';
 import { Skeleton } from '../Skeleton';
+import { ConfirmDialog } from '../ConfirmDialog';
 import { generateSouvenirImage } from '../../services/gemini';
 
 interface SouvenirsTabProps {
@@ -51,6 +52,15 @@ export const SouvenirsTab: React.FC<SouvenirsTabProps> = ({
 
   const [isAddingNewCategory, setIsAddingNewCategory] = useState(false);
   const [autoStatus, setAutoStatus] = useState(true);
+
+  // Unified Status confirmation state for single or bulk actions
+  const [statusConfirm, setStatusConfirm] = useState<{ 
+    isOpen: boolean; 
+    ids: string[]; 
+    status: string; 
+    message: string;
+    isBulk: boolean;
+  } | null>(null);
 
   const [form, setForm] = useState({
     name: '',
@@ -163,8 +173,51 @@ export const SouvenirsTab: React.FC<SouvenirsTabProps> = ({
     setShowModal(false);
   };
 
+  const confirmStatusChange = (id: string, status: string, productName: string) => {
+    setStatusConfirm({
+      isOpen: true,
+      ids: [id],
+      status: status,
+      isBulk: false,
+      message: `Are you sure you want to change the status of "${productName}" to ${status.replace('_', ' ')}?`
+    });
+  };
+
+  const confirmBulkStatusChange = (status: string) => {
+    if (selectedIds.size === 0) return;
+    setStatusConfirm({
+      isOpen: true,
+      ids: Array.from(selectedIds),
+      status: status,
+      isBulk: true,
+      message: `Are you sure you want to change the status of ${selectedIds.size} items to ${status.replace('_', ' ')}?`
+    });
+  };
+
+  const handleConfirmedStatusUpdate = () => {
+    if (!statusConfirm) return;
+    if (statusConfirm.isBulk) {
+      onBulkUpdateStatus(statusConfirm.ids, statusConfirm.status);
+      setSelectedIds(new Set());
+    } else {
+      onUpdateStatus(statusConfirm.ids[0], statusConfirm.status);
+    }
+    setStatusConfirm(null);
+  };
+
   return (
     <div className="space-y-6">
+      {/* Unified Status Confirmation Dialog */}
+      <ConfirmDialog 
+        isOpen={statusConfirm?.isOpen || false}
+        title={statusConfirm?.isBulk ? "Bulk Status Update" : "Update Product Status"}
+        message={statusConfirm?.message || ""}
+        confirmLabel="Update Now"
+        onConfirm={handleConfirmedStatusUpdate}
+        onClose={() => setStatusConfirm(null)}
+        type={statusConfirm?.status === 'OUT_OF_STOCK' ? 'warning' : 'info'}
+      />
+
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div className="flex flex-wrap items-center gap-3">
           <h2 className="text-2xl font-bold flex items-center gap-2">
@@ -178,8 +231,7 @@ export const SouvenirsTab: React.FC<SouvenirsTabProps> = ({
                 <select 
                   onChange={(e) => {
                     if (e.target.value) {
-                      onBulkUpdateStatus(Array.from(selectedIds), e.target.value);
-                      setSelectedIds(new Set());
+                      confirmBulkStatusChange(e.target.value);
                       e.target.value = "";
                     }
                   }}
@@ -297,8 +349,8 @@ export const SouvenirsTab: React.FC<SouvenirsTabProps> = ({
                 ))
               ) : filteredAndSorted.length > 0 ? (
                 filteredAndSorted.map((s:any) => (
-                  <tr key={s._id} className="hover:bg-rose-50/20 transition-all group animate-in fade-in duration-300">
-                    <td className="px-6 py-5 text-center">
+                  <tr key={s._id} className="hover:bg-rose-50/20 transition-all group animate-in fade-in duration-300 cursor-pointer" onClick={() => setViewingSouvenir(s)}>
+                    <td className="px-6 py-5 text-center" onClick={(e) => e.stopPropagation()}>
                       <input 
                         type="checkbox" 
                         checked={selectedIds.has(s._id)} 
@@ -339,11 +391,11 @@ export const SouvenirsTab: React.FC<SouvenirsTabProps> = ({
                     <td className="px-6 py-5">
                        <span className="text-[10px] text-slate-500 font-bold whitespace-nowrap">{new Date(s.updatedAt || s.createdAt).toLocaleDateString()}</span>
                     </td>
-                    <td className="px-6 py-5">
+                    <td className="px-6 py-5" onClick={(e) => e.stopPropagation()}>
                       <div className="relative w-fit">
                         <select 
                           value={s.status} 
-                          onChange={(e) => onUpdateStatus(s._id, e.target.value)}
+                          onChange={(e) => confirmStatusChange(s._id, e.target.value, s.name)}
                           className={`appearance-none text-[9px] font-black px-4 py-2 rounded-full border outline-none focus:ring-4 focus:ring-rose-100 cursor-pointer transition-all shadow-sm ${getStatusStyles(s.status)}`}
                         >
                           <option value="AVAILABLE">AVAILABLE</option>
@@ -353,7 +405,7 @@ export const SouvenirsTab: React.FC<SouvenirsTabProps> = ({
                         <ChevronDown size={10} className="absolute right-3 top-1/2 -translate-y-1/2 opacity-50 pointer-events-none" />
                       </div>
                     </td>
-                    <td className="px-6 py-5 text-right">
+                    <td className="px-6 py-5 text-right" onClick={(e) => e.stopPropagation()}>
                       <div className="flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition-all translate-x-2 group-hover:translate-x-0">
                         <button 
                           onClick={() => setViewingSouvenir(s)} 
@@ -706,7 +758,7 @@ export const SouvenirsTab: React.FC<SouvenirsTabProps> = ({
                  <button 
                   disabled={isSaving || isGeneratingImage} 
                   type="submit" 
-                  className="col-span-2 mt-4 bg-slate-900 text-white py-5 rounded-[1.5rem] font-black text-xs uppercase tracking-[0.2em] flex items-center justify-center gap-3 hover:bg-slate-800 shadow-2xl shadow-slate-200 disabled:opacity-50 transition-all active:scale-95"
+                  className="col-span-2 mt-4 bg-slate-900 text-white py-5 rounded-[1.5rem] font-black text-xs uppercase tracking-[0.2em] flex items-center justify-center gap-3 hover:bg-slate-800 shadow-2xl shadow-slate-200 disabled:opacity-50 transition-all active:scale-[0.98]"
                  >
                    {isSaving ? <Loader2 className="animate-spin" size={20} /> : <CheckCircle2 size={20} />}
                    {isEditing ? 'Sync with Collection' : 'Add to Collection'}
