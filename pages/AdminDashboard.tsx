@@ -9,6 +9,7 @@ import { UsersTab } from '../components/admin/UsersTab';
 import { CategoriesTab } from '../components/admin/CategoriesTab';
 import { SouvenirsTab } from '../components/admin/SouvenirsTab';
 import { OrdersTab } from '../components/admin/OrdersTab';
+import { UserRole } from '../types';
 
 export const AdminDashboard: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'dashboard' | 'users' | 'souvenirs' | 'orders' | 'categories'>('dashboard');
@@ -19,6 +20,9 @@ export const AdminDashboard: React.FC = () => {
   const allCategories = useQuery(api.categories.list);
 
   const updateStatus = useMutation(api.users.updateStatus);
+  const updateRole = useMutation(api.users.updateRole);
+  const removeUser = useMutation(api.users.remove);
+
   const createSouvenir = useMutation(api.souvenirs.create);
   const updateSouvenir = useMutation(api.souvenirs.update);
   const updateSouvenirStatus = useMutation(api.souvenirs.updateStatus);
@@ -52,18 +56,28 @@ export const AdminDashboard: React.FC = () => {
     });
   };
 
+  const confirmUserRole = (user: any, role: UserRole) => {
+    setDialogConfig({
+      isOpen: true, title: 'Change User Role?', message: `Are you sure you want to change ${user.name}'s role to ${role}?`,
+      confirmLabel: 'Update Role', type: 'warning',
+      onConfirm: async () => { setPendingActionId(user._id); await updateRole({ id: user._id, role }); setPendingActionId(null); }
+    });
+  };
+
+  const confirmUserRemoval = (user: any) => {
+    setDialogConfig({
+      isOpen: true, title: 'Delete User Account?', message: `This will permanently delete ${user.name}'s account and all associated data. This action cannot be undone.`,
+      confirmLabel: 'Delete Forever', type: 'danger',
+      onConfirm: async () => { setPendingActionId(user._id); await removeUser({ id: user._id }); setPendingActionId(null); }
+    });
+  };
+
   const handleAddCategory = async (e: React.FormEvent) => {
     e.preventDefault();
     const name = newCatName.trim();
     if (!name) return;
-
-    // Prevent duplicate category names
     const exists = allCategories?.some(c => c.name.toLowerCase() === name.toLowerCase());
-    if (exists) {
-      alert(`The category "${name}" already exists.`);
-      return;
-    }
-
+    if (exists) { alert(`The category "${name}" already exists.`); return; }
     setIsSaving(true);
     await createCategory({ name });
     setNewCatName('');
@@ -71,39 +85,21 @@ export const AdminDashboard: React.FC = () => {
   };
 
   const confirmRemoveCategory = (cat: any) => {
-    // Check for associated souvenirs to provide a clear warning
     const associatedCount = allSouvenirs?.filter(s => s.category === cat.name).length || 0;
-    
     const warningMessage = associatedCount > 0 
       ? `Warning: There are ${associatedCount} souvenirs assigned to "${cat.name}". If you delete this category, they will be automatically moved to "Uncategorized". Do you want to proceed?`
       : `Are you sure you want to delete the category "${cat.name}"?`;
-
     setDialogConfig({
-      isOpen: true, 
-      title: 'Remove Category?', 
-      message: warningMessage, 
-      confirmLabel: associatedCount > 0 ? 'Reassign & Delete' : 'Delete', 
-      type: associatedCount > 0 ? 'warning' : 'danger',
-      onConfirm: async () => { 
-        setPendingActionId(cat._id); 
-        await removeCategory({ id: cat._id }); 
-        setPendingActionId(null); 
-      }
+      isOpen: true, title: 'Remove Category?', message: warningMessage, confirmLabel: associatedCount > 0 ? 'Reassign & Delete' : 'Delete', type: associatedCount > 0 ? 'warning' : 'danger',
+      onConfirm: async () => { setPendingActionId(cat._id); await removeCategory({ id: cat._id }); setPendingActionId(null); }
     });
   };
 
   const handleSaveSouvenir = async (formData: any, file: File | null, isEditing: string | null) => {
     setIsSaving(true);
     try {
-      // 1. Handle potential new category creation
       const categoryExists = allCategories?.some(c => c.name.toLowerCase() === formData.category.toLowerCase());
-      
-      if (!categoryExists && formData.category) {
-        // Create the category if it doesn't exist (handle-on-the-fly)
-        await createCategory({ name: formData.category });
-      }
-
-      // 2. Handle image upload if a new file is provided
+      if (!categoryExists && formData.category) await createCategory({ name: formData.category });
       let storageId = isEditing ? (allSouvenirs || []).find((s:any) => s._id === isEditing)?.storageId : null;
       if (file) {
         const postUrl = await generateUploadUrl();
@@ -111,31 +107,11 @@ export const AdminDashboard: React.FC = () => {
         const { storageId: newId } = await result.json();
         storageId = newId;
       }
-
-      if (!storageId) { 
-        alert("Image required"); 
-        setIsSaving(false); 
-        return; 
-      }
-
-      // 3. Save or update the souvenir
-      const data = { 
-        ...formData, 
-        image: storageId, 
-        status: formData.stock === 0 ? "OUT_OF_STOCK" : formData.status 
-      };
-
-      if (isEditing) {
-        await updateSouvenir({ id: isEditing as any, updates: data });
-      } else {
-        await createSouvenir(data as any);
-      }
-    } catch (e) { 
-      console.error(e); 
-      alert("An error occurred while saving. Please try again.");
-    } finally { 
-      setIsSaving(false); 
-    }
+      if (!storageId) { alert("Image required"); setIsSaving(false); return; }
+      const data = { ...formData, image: storageId, status: formData.stock === 0 ? "OUT_OF_STOCK" : formData.status };
+      if (isEditing) await updateSouvenir({ id: isEditing as any, updates: data }); else await createSouvenir(data as any);
+    } catch (e) { console.error(e); alert("An error occurred while saving. Please try again.");
+    } finally { setIsSaving(false); }
   };
 
   const confirmDeleteSouvenir = (s: any) => {
@@ -176,7 +152,15 @@ export const AdminDashboard: React.FC = () => {
       </div>
 
       {activeTab === 'dashboard' && <DashboardTab allOrders={allOrders} allSouvenirs={allSouvenirs} allUsers={allUsers} />}
-      {activeTab === 'users' && <UsersTab allUsers={allUsers} onUpdateStatus={confirmUserStatus} pendingActionId={pendingActionId} />}
+      {activeTab === 'users' && (
+        <UsersTab 
+          allUsers={allUsers} 
+          onUpdateStatus={confirmUserStatus} 
+          onUpdateRole={confirmUserRole}
+          onDeleteUser={confirmUserRemoval}
+          pendingActionId={pendingActionId} 
+        />
+      )}
       {activeTab === 'categories' && <CategoriesTab allCategories={allCategories} allSouvenirs={allSouvenirs} newCatName={newCatName} setNewCatName={setNewCatName} onAddCategory={handleAddCategory} onRemoveCategory={confirmRemoveCategory} isSaving={isSaving} pendingActionId={pendingActionId} />}
       {activeTab === 'souvenirs' && (
         <SouvenirsTab 

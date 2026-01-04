@@ -107,3 +107,43 @@ export const updateStatus = mutation({
     });
   },
 });
+
+export const updateRole = mutation({
+  args: { id: v.id("users"), role: v.union(v.literal("ADMIN"), v.literal("CUSTOMER")) },
+  handler: async (ctx, args) => {
+    await ctx.db.patch(args.id, { role: args.role });
+    
+    await ctx.db.insert("notifications", {
+      userId: args.id,
+      message: `Your account role has been updated to: ${args.role}`,
+      read: false,
+      createdAt: Date.now(),
+    });
+  },
+});
+
+export const remove = mutation({
+  args: { id: v.id("users") },
+  handler: async (ctx, args) => {
+    // Delete associated cart and wishlist items
+    const cartItems = await ctx.db
+      .query("cartItems")
+      .withIndex("by_user", (q) => q.eq("userId", args.id))
+      .collect();
+    for (const item of cartItems) await ctx.db.delete(item._id);
+
+    const wishlistItems = await ctx.db
+      .query("wishlistItems")
+      .withIndex("by_user", (q) => q.eq("userId", args.id))
+      .collect();
+    for (const item of wishlistItems) await ctx.db.delete(item._id);
+
+    const notifications = await ctx.db
+      .query("notifications")
+      .withIndex("by_user", (q) => q.eq("userId", args.id))
+      .collect();
+    for (const n of notifications) await ctx.db.delete(n._id);
+
+    await ctx.db.delete(args.id);
+  },
+});
