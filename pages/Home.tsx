@@ -4,7 +4,7 @@ import { Link } from 'react-router-dom';
 import { 
   Sparkles, ShoppingBag, Heart, ArrowRight, X, Loader2, 
   Gift, Palette, DollarSign, User as UserIcon, MessageSquare, 
-  RotateCcw 
+  RotateCcw
 } from 'lucide-react';
 import { useQuery, useMutation } from 'convex/react';
 import { api } from '../convex/_generated/api';
@@ -12,7 +12,8 @@ import { getGiftRecommendations } from '../services/gemini';
 
 export const Home: React.FC<{ user: any }> = ({ user }) => {
   const souvenirs = useQuery(api.souvenirs.list) || [];
-  const featured = souvenirs.slice(0, 3);
+  // Increased to 4 items for the new grid
+  const featured = souvenirs.slice(0, 4);
   const wishlistItems = useQuery(api.wishlist.list, user ? { userId: user._id as any } : "skip") || [];
   const toggleWishlist = useMutation(api.wishlist.toggle);
   
@@ -100,6 +101,7 @@ export const Home: React.FC<{ user: any }> = ({ user }) => {
         <button 
           onClick={() => setAiModal(true)}
           className="relative flex items-center justify-center w-16 h-16 bg-rose-500 text-white rounded-full shadow-[0_20px_50px_rgba(244,63,94,0.3)] hover:scale-110 active:scale-95 transition-all duration-300"
+          aria-label="Open AI Gift Finder"
         >
           <Sparkles size={28} className="group-hover:rotate-12 transition-transform" />
           <div className="absolute right-full mr-4 px-4 py-2 bg-slate-900 text-white text-[10px] font-black uppercase tracking-widest rounded-xl opacity-0 translate-x-4 group-hover:opacity-100 group-hover:translate-x-0 transition-all pointer-events-none whitespace-nowrap">
@@ -109,20 +111,23 @@ export const Home: React.FC<{ user: any }> = ({ user }) => {
         </button>
       </div>
 
-      <section className="relative h-[85vh] flex items-center justify-center overflow-hidden">
+      {/* Static Hero Section */}
+      <section className="relative h-[85vh] flex items-center overflow-hidden">
         <div className="absolute inset-0 z-0">
           <img 
             src="https://images.unsplash.com/photo-1513519245088-0e12902e5a38?auto=format&fit=crop&q=80&w=2000" 
             className="w-full h-full object-cover" 
-            alt="Hero Background" 
+            alt="Hero Boutique" 
           />
           <div className="absolute inset-0 bg-gradient-to-r from-white via-white/80 to-transparent"></div>
         </div>
         <div className="relative z-10 max-w-7xl mx-auto px-4 w-full">
           <div className="max-w-2xl space-y-8 animate-in fade-in slide-in-from-left-8 duration-1000">
-            <span className="inline-block px-4 py-1.5 bg-rose-100 text-rose-600 rounded-full text-xs font-black tracking-widest uppercase">Elegance in every petal</span>
+            <span className="inline-block px-4 py-1.5 bg-rose-100 text-rose-600 rounded-full text-xs font-black tracking-widest uppercase">
+              Elegance in every petal
+            </span>
             <h1 className="text-6xl md:text-8xl font-black text-slate-900 leading-[0.95] tracking-tighter">
-              Timeless Treasures for <span className="text-rose-500 italic font-serif">Precious</span> Moments
+              Timeless Treasures for <span className='text-rose-500 italic font-serif'>Precious</span> Moments
             </h1>
             <p className="text-xl text-slate-600 max-w-lg leading-relaxed font-medium">
               Discover our handcrafted collection of memories. From delicate tea sets to artisan jewelry, we bring elegance to your gifting experience.
@@ -155,31 +160,40 @@ export const Home: React.FC<{ user: any }> = ({ user }) => {
             <ArrowRight size={16} />
           </Link>
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-10">
+        
+        {/* Updated Grid: 4 columns and reduced card padding */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
           {featured.map(item => (
-            <div key={item._id} className="group relative bg-white rounded-[3rem] p-6 shadow-sm hover:shadow-2xl transition-all border border-rose-50 flex flex-col h-full">
-              <div className="aspect-[4/5] rounded-[2.5rem] overflow-hidden mb-8 relative">
+            <div key={item._id} className="group relative bg-white rounded-[2.5rem] p-5 shadow-sm hover:shadow-2xl transition-all border border-rose-50 flex flex-col h-full animate-in fade-in slide-in-from-bottom-4 duration-500">
+              {/* Changed aspect-square for smaller size */}
+              <div className="aspect-square rounded-[2rem] overflow-hidden mb-5 relative">
                 <img src={item.image} alt={item.name} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-1000" />
                 <button 
                   onClick={(e) => handleToggleWishlist(e, item._id)}
-                  className={`absolute top-6 right-6 p-3 rounded-2xl transition-all shadow-xl ${
+                  className={`absolute top-4 right-4 p-2.5 rounded-xl transition-all shadow-lg ${
                     wishlistSet.has(item._id) ? 'bg-rose-500 text-white opacity-100' : 'bg-white/90 backdrop-blur-md text-rose-500 opacity-0 group-hover:opacity-100'
                   }`}
+                  aria-label={wishlistSet.has(item._id) ? "Remove from wishlist" : "Add to wishlist"}
                 >
-                  <Heart size={20} className={wishlistSet.has(item._id) ? "fill-white" : ""} />
+                  <Heart size={18} className={wishlistSet.has(item._id) ? "fill-white" : ""} />
                 </button>
-                <div className="absolute bottom-6 left-6">
-                  <span className="bg-white/90 backdrop-blur-md px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg">
+                <div className="absolute bottom-4 left-4">
+                  <span className="bg-white/90 backdrop-blur-md px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest shadow-lg">
                     {item.category}
                   </span>
                 </div>
               </div>
-              <h3 className="font-black text-2xl mb-2 group-hover:text-rose-500 transition-colors">{item.name}</h3>
-              <p className="text-slate-500 text-sm mb-8 line-clamp-3 leading-relaxed font-medium flex-grow">{item.description}</p>
-              <div className="flex justify-between items-center mt-auto">
-                <span className="text-3xl font-black text-slate-900">GH₵{item.price.toFixed(2)}</span>
-                <Link to="/shop" className="bg-slate-900 text-white p-4 rounded-2xl hover:bg-rose-500 transition-all shadow-lg active:scale-95">
-                  <ShoppingBag size={20} />
+              {/* Reduced font sizes for compact look */}
+              <h3 className="font-black text-lg mb-1.5 group-hover:text-rose-500 transition-colors line-clamp-1">{item.name}</h3>
+              <p className="text-slate-500 text-xs mb-6 line-clamp-2 leading-relaxed font-medium flex-grow">{item.description}</p>
+              <div className="flex justify-between items-center mt-auto pt-4 border-t border-rose-50">
+                <span className="text-2xl font-black text-slate-900">GH₵{item.price.toFixed(2)}</span>
+                <Link 
+                  to="/shop" 
+                  className="bg-slate-900 text-white p-3.5 rounded-xl hover:bg-rose-500 transition-all shadow-lg active:scale-95"
+                  aria-label={`View ${item.name}`}
+                >
+                  <ShoppingBag size={18} />
                 </Link>
               </div>
             </div>
@@ -195,6 +209,7 @@ export const Home: React.FC<{ user: any }> = ({ user }) => {
             <button 
               onClick={handleCloseModal} 
               className="absolute top-8 right-8 p-3 bg-slate-50 text-slate-400 hover:text-rose-500 hover:bg-rose-50 rounded-2xl transition-all z-20"
+              aria-label="Close Modal"
             >
               <X size={24} />
             </button>
