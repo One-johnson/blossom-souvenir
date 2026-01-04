@@ -24,6 +24,8 @@ export interface User {
   role: UserRole;
   status: UserStatus;
   createdAt: number;
+  profileImage?: string; // This will store the storage ID
+  profileImageUrl?: string | null; // This will store the resolved URL
 }
 
 export interface Souvenir {

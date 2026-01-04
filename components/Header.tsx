@@ -83,14 +83,27 @@ export const Header: React.FC<HeaderProps> = ({ user, onLogout, cartCount }) => 
                   className="flex items-center space-x-2 p-1 hover:bg-rose-50 rounded-full transition-colors"
                 >
                   <div className="w-9 h-9 rounded-full bg-rose-100 flex items-center justify-center text-rose-600 font-bold border-2 border-white shadow-sm overflow-hidden">
-                    {user.name.charAt(0)}
+                    {user.profileImageUrl ? (
+                      <img src={user.profileImageUrl} alt={user.name} className="w-full h-full object-cover" />
+                    ) : (
+                      user.name.charAt(0)
+                    )}
                   </div>
                 </button>
                 {profileOpen && (
                   <div className="absolute right-0 mt-2 w-64 bg-white border border-rose-100 rounded-3xl shadow-2xl py-3 z-[60] animate-in slide-in-from-top-2 duration-200">
-                    <div className="px-5 py-4 border-b border-rose-50">
-                      <p className="text-sm font-black text-slate-800 truncate">{user.name}</p>
-                      <p className="text-[10px] text-slate-400 truncate uppercase tracking-widest font-bold mt-0.5">{user.role}</p>
+                    <div className="px-5 py-4 border-b border-rose-50 flex items-center gap-4">
+                      <div className="w-10 h-10 rounded-xl bg-rose-100 flex items-center justify-center text-rose-500 font-bold shrink-0 overflow-hidden">
+                        {user.profileImageUrl ? (
+                          <img src={user.profileImageUrl} alt={user.name} className="w-full h-full object-cover" />
+                        ) : (
+                          user.name.charAt(0)
+                        )}
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-sm font-black text-slate-800 truncate">{user.name}</p>
+                        <p className="text-[10px] text-slate-400 truncate uppercase tracking-widest font-bold mt-0.5">{user.role}</p>
+                      </div>
                     </div>
                     
                     <div className="py-2">

@@ -10,6 +10,7 @@ export default defineSchema({
     role: v.union(v.literal("ADMIN"), v.literal("CUSTOMER")),
     status: v.union(v.literal("PENDING"), v.literal("APPROVED"), v.literal("REJECTED")),
     createdAt: v.number(),
+    profileImage: v.optional(v.id("_storage")),
   }).index("by_email", ["email"]),
 
   souvenirs: defineTable({
