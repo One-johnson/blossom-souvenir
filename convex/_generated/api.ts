@@ -14,6 +14,8 @@ export const api: any = {
     login: "users:login",
     updateStatus: "users:updateStatus",
     updateProfile: "users:updateProfile",
+    updateRole: "users:updateRole",
+    remove: "users:remove",
   },
   souvenirs: {
     list: "souvenirs:list",
@@ -59,5 +61,11 @@ export const api: any = {
     markAllRead: "notifications:markAllRead",
     remove: "notifications:remove",
     clearAll: "notifications:clearAll",
+  },
+  messages: {
+    list: "messages:list",
+    send: "messages:send",
+    reply: "messages:reply",
+    remove: "messages:remove",
   }
 };

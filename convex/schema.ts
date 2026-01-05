@@ -61,6 +61,17 @@ export default defineSchema({
     createdAt: v.number(),
   }).index("by_user", ["userId"]),
 
+  messages: defineTable({
+    name: v.string(),
+    email: v.string(),
+    subject: v.optional(v.string()),
+    message: v.string(),
+    userId: v.optional(v.id("users")),
+    replied: v.boolean(),
+    replyText: v.optional(v.string()),
+    createdAt: v.number(),
+  }).index("by_user", ["userId"]),
+
   sessions: defineTable({
     userId: v.id("users"),
     token: v.string(),

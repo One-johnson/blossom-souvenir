@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { Users, Package, ShoppingCart, BarChart3, Tag, Loader2 } from 'lucide-react';
+import { Users, Package, ShoppingCart, BarChart3, Tag, MessageSquare, Loader2 } from 'lucide-react';
 import { useQuery, useMutation } from 'convex/react';
 import { api } from '../convex/_generated/api';
 import { ConfirmDialog } from '../components/ConfirmDialog';
@@ -9,15 +9,17 @@ import { UsersTab } from '../components/admin/UsersTab';
 import { CategoriesTab } from '../components/admin/CategoriesTab';
 import { SouvenirsTab } from '../components/admin/SouvenirsTab';
 import { OrdersTab } from '../components/admin/OrdersTab';
+import { MessagesTab } from '../components/admin/MessagesTab';
 import { UserRole } from '../types';
 
 export const AdminDashboard: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'users' | 'souvenirs' | 'orders' | 'categories'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'users' | 'souvenirs' | 'orders' | 'categories' | 'messages'>('dashboard');
   
   const allUsers = useQuery(api.users.list);
   const allSouvenirs = useQuery(api.souvenirs.list);
   const allOrders = useQuery(api.orders.listAll);
   const allCategories = useQuery(api.categories.list);
+  const allMessages = useQuery(api.messages.list);
 
   const updateStatus = useMutation(api.users.updateStatus);
   const updateRole = useMutation(api.users.updateRole);
@@ -37,6 +39,9 @@ export const AdminDashboard: React.FC = () => {
   const updateOrderStatuses = useMutation(api.orders.updateStatuses);
   const removeOrder = useMutation(api.orders.remove);
   const removeManyOrders = useMutation(api.orders.removeMany);
+
+  const replyToMessage = useMutation(api.messages.reply);
+  const removeMessage = useMutation(api.messages.remove);
 
   const [isSaving, setIsSaving] = useState(false);
   const [pendingActionId, setPendingActionId] = useState<string | null>(null);
@@ -128,6 +133,15 @@ export const AdminDashboard: React.FC = () => {
     });
   };
 
+  const confirmDeleteMessage = (id: string) => {
+    setDialogConfig({
+      isOpen: true, title: 'Delete Message?', message: 'Delete this inquiry permanently?', confirmLabel: 'Delete', type: 'danger',
+      onConfirm: async () => { setPendingActionId(id); await removeMessage({ id: id as any }); setPendingActionId(null); }
+    });
+  };
+
+  const unrepliedCount = allMessages?.filter(m => !m.replied).length || 0;
+
   return (
     <div className="max-w-7xl mx-auto px-4 py-12 min-h-screen text-slate-900">
       <ConfirmDialog 
@@ -138,14 +152,20 @@ export const AdminDashboard: React.FC = () => {
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-12 gap-6">
         <div><h1 className="text-4xl font-bold mb-2">Admin Panel</h1><p className="text-slate-500">Manage the blossom shop.</p></div>
         <div className="flex bg-white p-1.5 rounded-2xl shadow-sm border border-rose-50 overflow-x-auto">
-          {(['dashboard', 'users', 'categories', 'souvenirs', 'orders'] as const).map(tab => (
-            <button key={tab} onClick={() => setActiveTab(tab)} className={`flex items-center space-x-2 px-6 py-2.5 rounded-xl text-sm font-bold transition-all whitespace-nowrap ${activeTab === tab ? 'bg-rose-500 text-white shadow-md' : 'text-slate-600 hover:bg-rose-50'}`}>
+          {(['dashboard', 'users', 'categories', 'souvenirs', 'orders', 'messages'] as const).map(tab => (
+            <button key={tab} onClick={() => setActiveTab(tab)} className={`relative flex items-center space-x-2 px-6 py-2.5 rounded-xl text-sm font-bold transition-all whitespace-nowrap ${activeTab === tab ? 'bg-rose-500 text-white shadow-md' : 'text-slate-600 hover:bg-rose-50'}`}>
               {tab === 'dashboard' && <BarChart3 size={18} />}
               {tab === 'users' && <Users size={18} />}
               {tab === 'categories' && <Tag size={18} />}
               {tab === 'souvenirs' && <Package size={18} />}
               {tab === 'orders' && <ShoppingCart size={18} />}
+              {tab === 'messages' && <MessageSquare size={18} />}
               <span className="capitalize">{tab}</span>
+              {tab === 'messages' && unrepliedCount > 0 && (
+                <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[8px] text-white">
+                  {unrepliedCount}
+                </span>
+              )}
             </button>
           ))}
         </div>
@@ -176,6 +196,14 @@ export const AdminDashboard: React.FC = () => {
         />
       )}
       {activeTab === 'orders' && <OrdersTab allOrders={allOrders} onUpdateStatus={(id, s) => updateOrderStatus({ id: id as any, status: s })} onBulkUpdateStatus={(ids, s) => updateOrderStatuses({ ids: ids as any[], status: s })} onDelete={confirmDeleteOrder} onBulkDelete={ids => removeManyOrders({ ids: ids as any[] })} pendingActionId={pendingActionId} isSaving={isSaving} />}
+      {activeTab === 'messages' && (
+        <MessagesTab 
+          allMessages={allMessages} 
+          onReply={(id, text) => replyToMessage({ id: id as any, text })} 
+          onDelete={confirmDeleteMessage} 
+          pendingActionId={pendingActionId}
+        />
+      )}
     </div>
   );
 };

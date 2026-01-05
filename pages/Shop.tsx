@@ -1,10 +1,10 @@
 
-import React, { useState, useMemo, useRef } from 'react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { 
   ShoppingCart, Search, Filter, AlertCircle, CheckCircle2, 
   Clock, Sparkles, Loader2, ChevronDown, Tag, Eye, 
   X, Volume2, Play, Pause, Info, MessageSquare, RotateCcw,
-  Star, Heart
+  Star, Heart, DollarSign
 } from 'lucide-react';
 import { useQuery, useMutation } from 'convex/react';
 import { api } from '../convex/_generated/api';
@@ -25,11 +25,27 @@ export const Shop: React.FC<ShopProps> = ({ user }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('All');
   const [statusFilter, setStatusFilter] = useState('All');
+  const [maxPrice, setMaxPrice] = useState<number>(2000);
+  const [isPriceModified, setIsPriceModified] = useState(false);
+  
   const [message, setMessage] = useState<{ text: string, type: 'success' | 'error' } | null>(null);
   const [pendingCartId, setPendingCartId] = useState<string | null>(null);
   const [pendingWishlistId, setPendingWishlistId] = useState<string | null>(null);
   
   const [selectedProduct, setSelectedProduct] = useState<Souvenir | null>(null);
+
+  // Calculate the maximum price from data to bound the slider
+  const absoluteMaxPrice = useMemo(() => {
+    if (!souvenirs || souvenirs.length === 0) return 2000;
+    return Math.ceil(Math.max(...souvenirs.map(s => s.price)));
+  }, [souvenirs]);
+
+  // Set initial max price once souvenirs load
+  useEffect(() => {
+    if (souvenirs && souvenirs.length > 0 && !isPriceModified) {
+      setMaxPrice(absoluteMaxPrice);
+    }
+  }, [souvenirs, absoluteMaxPrice, isPriceModified]);
 
   const wishlistSet = useMemo(() => new Set(wishlistItems.map((i: any) => i.souvenirId)), [wishlistItems]);
 
@@ -55,9 +71,10 @@ export const Shop: React.FC<ShopProps> = ({ user }) => {
                             s.description.toLowerCase().includes(searchTerm.toLowerCase());
       const matchesCategory = categoryFilter === 'All' || s.category === categoryFilter;
       const matchesStatus = statusFilter === 'All' || s.status === statusFilter;
-      return matchesSearch && matchesCategory && matchesStatus;
+      const matchesPrice = s.price <= maxPrice;
+      return matchesSearch && matchesCategory && matchesStatus && matchesPrice;
     });
-  }, [souvenirs, searchTerm, categoryFilter, statusFilter]);
+  }, [souvenirs, searchTerm, categoryFilter, statusFilter, maxPrice]);
 
   const handleAddToCart = async (e: React.MouseEvent, souvenir: any) => {
     e.stopPropagation();
@@ -114,6 +131,8 @@ export const Shop: React.FC<ShopProps> = ({ user }) => {
     setSearchTerm('');
     setCategoryFilter('All');
     setStatusFilter('All');
+    setMaxPrice(absoluteMaxPrice);
+    setIsPriceModified(false);
   };
 
   const isLoading = souvenirs === undefined;
@@ -138,7 +157,7 @@ export const Shop: React.FC<ShopProps> = ({ user }) => {
       </div>
 
       {/* Recently Added Section */}
-      {!isLoading && recentlyAdded.length > 0 && searchTerm === '' && categoryFilter === 'All' && statusFilter === 'All' && (
+      {!isLoading && recentlyAdded.length > 0 && searchTerm === '' && categoryFilter === 'All' && statusFilter === 'All' && !isPriceModified && (
         <div className="mb-20 animate-in fade-in slide-in-from-bottom-6 duration-700">
           <div className="flex items-center gap-2 mb-6 text-rose-500">
             <Sparkles size={18} className="animate-pulse" />
@@ -178,9 +197,9 @@ export const Shop: React.FC<ShopProps> = ({ user }) => {
 
       {/* Main Controls */}
       <div className="flex flex-col lg:flex-row justify-between items-center mb-12 gap-8 sticky top-20 z-40 bg-slate-50/80 backdrop-blur-md py-4 -mx-4 px-4 rounded-3xl">
-        <div className="flex flex-col md:flex-row items-stretch md:items-center gap-4 w-full">
+        <div className="flex flex-col md:flex-row items-stretch md:items-center gap-6 w-full">
           {/* Search Box */}
-          <div className="relative flex-grow lg:max-w-md">
+          <div className="relative flex-grow lg:max-w-xs">
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 w-5 h-5" />
             <input 
               type="text" 
@@ -192,10 +211,10 @@ export const Shop: React.FC<ShopProps> = ({ user }) => {
           </div>
 
           {/* Category Select */}
-          <div className="relative w-full md:w-48">
+          <div className="relative w-full md:w-40">
             <Tag className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4" />
             <select 
-              className="w-full pl-10 pr-10 py-4 rounded-[1.5rem] bg-white border border-rose-100 shadow-sm appearance-none outline-none focus:ring-4 focus:ring-rose-500/10 font-bold text-[10px] uppercase tracking-widest text-slate-600 cursor-pointer"
+              className="w-full pl-10 pr-10 py-4 rounded-[1.5rem] bg-white border border-rose-100 shadow-sm appearance-none outline-none focus:ring-4 focus:ring-rose-500/10 font-bold text-[9px] uppercase tracking-widest text-slate-600 cursor-pointer"
               value={categoryFilter}
               onChange={(e) => setCategoryFilter(e.target.value)}
             >
@@ -207,10 +226,10 @@ export const Shop: React.FC<ShopProps> = ({ user }) => {
           </div>
 
           {/* Status Select */}
-          <div className="relative w-full md:w-48">
+          <div className="relative w-full md:w-40">
             <Filter className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4" />
             <select 
-              className="w-full pl-10 pr-10 py-4 rounded-[1.5rem] bg-white border border-rose-100 shadow-sm appearance-none outline-none focus:ring-4 focus:ring-rose-500/10 font-bold text-[10px] uppercase tracking-widest text-slate-600 cursor-pointer"
+              className="w-full pl-10 pr-10 py-4 rounded-[1.5rem] bg-white border border-rose-100 shadow-sm appearance-none outline-none focus:ring-4 focus:ring-rose-500/10 font-bold text-[9px] uppercase tracking-widest text-slate-600 cursor-pointer"
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
             >
@@ -222,11 +241,41 @@ export const Shop: React.FC<ShopProps> = ({ user }) => {
             <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none w-4 h-4" />
           </div>
 
+          {/* Price Range Slider */}
+          <div className="flex-grow flex flex-col gap-2 min-w-[180px]">
+            <div className="flex justify-between items-center px-2">
+              <label className="text-[9px] font-black uppercase tracking-widest text-slate-400 flex items-center gap-1.5">
+                <DollarSign size={10} className="text-rose-500" />
+                Price: Up to GH₵{maxPrice}
+              </label>
+              {isPriceModified && (
+                <button 
+                  onClick={() => { setMaxPrice(absoluteMaxPrice); setIsPriceModified(false); }}
+                  className="text-[8px] font-bold text-rose-500 uppercase tracking-tighter hover:underline"
+                >
+                  Clear
+                </button>
+              )}
+            </div>
+            <input 
+              type="range" 
+              min="0" 
+              max={absoluteMaxPrice} 
+              step="10"
+              className="w-full h-1.5 bg-rose-100 rounded-lg appearance-none cursor-pointer accent-rose-500"
+              value={maxPrice}
+              onChange={(e) => {
+                setMaxPrice(Number(e.target.value));
+                setIsPriceModified(true);
+              }}
+            />
+          </div>
+
           {/* Reset Filters */}
-          {(searchTerm || categoryFilter !== 'All' || statusFilter !== 'All') && (
+          {(searchTerm || categoryFilter !== 'All' || statusFilter !== 'All' || isPriceModified) && (
             <button 
               onClick={handleResetFilters}
-              className="p-4 bg-rose-50 text-rose-500 rounded-2xl hover:bg-rose-100 transition-all group"
+              className="p-4 bg-rose-50 text-rose-500 rounded-2xl hover:bg-rose-100 transition-all group shrink-0"
               title="Reset Filters"
             >
               <RotateCcw size={20} className="group-hover:rotate-[-45deg] transition-transform" />
