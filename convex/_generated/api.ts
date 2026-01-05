@@ -1,11 +1,9 @@
-
 /* eslint-disable */
 /**
  * Generated API definitions.
  */
 import { anyApi } from "convex/server";
 
-// Fix: Use 'any' type for api because anyApi is treated as a value in this version of Convex/server
 export const api: any = {
   users: {
     list: "users:list",
@@ -16,6 +14,10 @@ export const api: any = {
     updateProfile: "users:updateProfile",
     updateRole: "users:updateRole",
     remove: "users:remove",
+  },
+  sessions: {
+    get: "sessions:get",
+    logout: "sessions:logout",
   },
   souvenirs: {
     list: "souvenirs:list",
@@ -34,6 +36,10 @@ export const api: any = {
   },
   images: {
     generateUploadUrl: "images:generateUploadUrl",
+  },
+  reviews: {
+    listBySouvenir: "reviews:listBySouvenir",
+    add: "reviews:add",
   },
   cart: {
     list: "cart:list",

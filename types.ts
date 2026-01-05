@@ -13,7 +13,8 @@ export enum UserStatus {
 export enum SouvenirStatus {
   AVAILABLE = 'AVAILABLE',
   OUT_OF_STOCK = 'OUT_OF_STOCK',
-  PREORDER = 'PREORDER'
+  PREORDER = 'PREORDER',
+  SOLD = 'SOLD'
 }
 
 export interface User {
@@ -24,8 +25,18 @@ export interface User {
   role: UserRole;
   status: UserStatus;
   createdAt: number;
-  profileImage?: string; // This will store the storage ID
-  profileImageUrl?: string | null; // This will store the resolved URL
+  profileImage?: string; 
+  profileImageUrl?: string | null;
+}
+
+export interface Review {
+  _id: string;
+  userId: string;
+  userName: string;
+  souvenirId: string;
+  rating: number;
+  comment: string;
+  createdAt: number;
 }
 
 export interface Souvenir {
@@ -39,6 +50,8 @@ export interface Souvenir {
   stock: number;
   createdAt: number;
   updatedAt: number;
+  rating?: number;
+  reviewCount?: number;
 }
 
 export interface CartItem {

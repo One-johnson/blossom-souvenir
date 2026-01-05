@@ -19,7 +19,7 @@ export default defineSchema({
     price: v.number(),
     image: v.id("_storage"),
     category: v.string(),
-    status: v.union(v.literal("AVAILABLE"), v.literal("OUT_OF_STOCK"), v.literal("PREORDER")),
+    status: v.union(v.literal("AVAILABLE"), v.literal("OUT_OF_STOCK"), v.literal("PREORDER"), v.literal("SOLD")),
     stock: v.number(),
     createdAt: v.number(),
     updatedAt: v.number(),
@@ -28,6 +28,15 @@ export default defineSchema({
   categories: defineTable({
     name: v.string(),
   }).index("by_name", ["name"]),
+
+  reviews: defineTable({
+    userId: v.id("users"),
+    userName: v.string(),
+    souvenirId: v.id("souvenirs"),
+    rating: v.number(),
+    comment: v.string(),
+    createdAt: v.number(),
+  }).index("by_souvenir", ["souvenirId"]),
 
   cartItems: defineTable({
     userId: v.id("users"),

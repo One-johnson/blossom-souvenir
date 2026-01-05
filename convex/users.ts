@@ -1,6 +1,6 @@
-
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
+import bcrypt from "bcryptjs";
 
 export const list = query({
   handler: async (ctx) => {
@@ -37,16 +37,30 @@ export const register = mutation({
     const existingUsers = await ctx.db.query("users").collect();
     const isFirstUser = existingUsers.length === 0;
 
+    // Securely hash the password before storage
+    const passwordHash = await bcrypt.hash(args.password, 10);
+
     const user = {
       name: args.name,
       email: args.email,
-      passwordHash: args.password,
+      passwordHash: passwordHash,
       role: isFirstUser ? ("ADMIN" as const) : ("CUSTOMER" as const),
       status: isFirstUser ? ("APPROVED" as const) : ("PENDING" as const),
       createdAt: Date.now(),
     };
     
-    const id = await ctx.db.insert("users", user);
+    const userId = await ctx.db.insert("users", user);
+
+    // Create session for immediate login if approved
+    let sessionToken = null;
+    if (user.status === "APPROVED") {
+      sessionToken = Math.random().toString(36).substring(2) + Date.now().toString(36);
+      await ctx.db.insert("sessions", {
+        userId,
+        token: sessionToken,
+        expiresAt: Date.now() + 30 * 24 * 60 * 60 * 1000, // 30 days
+      });
+    }
 
     if (!isFirstUser) {
       const admins = await ctx.db
@@ -64,11 +78,11 @@ export const register = mutation({
       }
     }
 
-    return { ...user, _id: id };
+    return { ...user, _id: userId, token: sessionToken };
   },
 });
 
-export const login = query({
+export const login = mutation({
   args: { email: v.string(), password: v.string() },
   handler: async (ctx, args) => {
     const user = await ctx.db
@@ -76,10 +90,21 @@ export const login = query({
       .withIndex("by_email", (q) => q.eq("email", args.email))
       .unique();
     
-    if (user && user.passwordHash === args.password) {
+    // Compare provided password with the hashed version in DB
+    if (user && await bcrypt.compare(args.password, user.passwordHash)) {
+      const token = Math.random().toString(36).substring(2) + Date.now().toString(36);
+      await ctx.db.insert("sessions", {
+        userId: user._id,
+        token,
+        expiresAt: Date.now() + 30 * 24 * 60 * 60 * 1000, // 30 days
+      });
+
       return {
-        ...user,
-        profileImageUrl: user.profileImage ? await (ctx as any).storage.getUrl(user.profileImage) : null,
+        user: {
+          ...user,
+          profileImageUrl: user.profileImage ? await ctx.storage.getUrl(user.profileImage) : null,
+        },
+        token,
       };
     }
     return null;
@@ -105,7 +130,9 @@ export const updateProfile = mutation({
       if (!args.currentPassword) {
         throw new Error("Current password is required to update sensitive information.");
       }
-      if (user.passwordHash !== args.currentPassword) {
+      // Verify current password before allowing updates to credentials
+      const isMatch = await bcrypt.compare(args.currentPassword, user.passwordHash);
+      if (!isMatch) {
         throw new Error("Incorrect current password.");
       }
     }
@@ -113,7 +140,10 @@ export const updateProfile = mutation({
     const updates: any = {};
     if (args.name) updates.name = args.name;
     if (args.email) updates.email = args.email;
-    if (args.password) updates.passwordHash = args.password;
+    if (args.password) {
+      // Hash the new password
+      updates.passwordHash = await bcrypt.hash(args.password, 10);
+    }
     if (args.profileImage) {
       if (user.profileImage) {
         await ctx.storage.delete(user.profileImage);

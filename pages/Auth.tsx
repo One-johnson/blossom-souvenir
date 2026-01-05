@@ -1,13 +1,12 @@
-
 import React, { useState } from 'react';
 import { Mail, Lock, User as UserIcon, ArrowRight, Loader2, Sparkles } from 'lucide-react';
-import { useMutation, useQuery } from 'convex/react';
+import { useMutation } from 'convex/react';
 import { api } from '../convex/_generated/api';
-import { User, UserStatus, UserRole } from '../types';
+import { UserStatus, UserRole } from '../types';
 import { useNavigate } from 'react-router-dom';
 
 interface AuthProps {
-  onLogin: (user: any) => void;
+  onLogin: (user: any, token: string) => void;
 }
 
 export const Auth: React.FC<AuthProps> = ({ onLogin }) => {
@@ -17,14 +16,13 @@ export const Auth: React.FC<AuthProps> = ({ onLogin }) => {
   
   const navigate = useNavigate();
   const registerUser = useMutation(api.users.register);
+  const loginUser = useMutation(api.users.login);
   
   const [formData, setFormData] = useState({
     name: '',
     email: '',
     password: ''
   });
-
-  const loginUser = useQuery(api.users.login, isLogin ? { email: formData.email, password: formData.password } : "skip" as any);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -33,40 +31,47 @@ export const Auth: React.FC<AuthProps> = ({ onLogin }) => {
 
     try {
       if (isLogin) {
-        if (!loginUser) {
+        const loginResponse = await loginUser({ email: formData.email, password: formData.password });
+        
+        if (!loginResponse) {
           setError('Invalid email or password.');
           setLoading(false);
           return;
         }
-        if (loginUser.status === "REJECTED") {
+
+        const { user, token } = loginResponse;
+
+        if (user.status === "REJECTED") {
             setError('Your account application was rejected.');
             setLoading(false);
             return;
         }
-        if (loginUser.status === "PENDING") {
+        if (user.status === "PENDING") {
             setError('Your account is still pending approval.');
             setLoading(false);
             return;
         }
-        onLogin(loginUser);
-        navigate(loginUser.role === UserRole.ADMIN ? '/admin' : '/');
+
+        onLogin(user, token);
+        navigate(user.role === UserRole.ADMIN ? '/admin' : '/');
       } else {
-        const newUser = await registerUser({
+        const newUserResponse = await registerUser({
             name: formData.name,
             email: formData.email,
             password: formData.password
         });
 
-        if (newUser.role === UserRole.ADMIN) {
-          onLogin(newUser);
-          navigate('/admin');
-        } else if (newUser.status === "PENDING") {
+        if (newUserResponse.status === "PENDING") {
           setError('Registration successful! Please wait for admin approval.');
           setIsLogin(true);
           setFormData({ ...formData, password: '' });
+        } else if (newUserResponse.token) {
+          onLogin(newUserResponse, newUserResponse.token);
+          navigate(newUserResponse.role === UserRole.ADMIN ? '/admin' : '/');
         } else {
-          onLogin(newUser);
-          navigate('/');
+          // Fallback for approved but no token returned (unlikely)
+          setIsLogin(true);
+          setError('Account created. Please sign in.');
         }
       }
     } catch (err) {
